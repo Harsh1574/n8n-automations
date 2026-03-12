@@ -1,0 +1,225 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3e44f6e6-5c7b-4a41-a045-3677deb4121c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "receivedAfter": "={{ $now.minus(1, 'day') }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a7d9228b-9f71-4e3e-bfe5-d8754c4d54ba",
+      "name": "Get many messages",
+      "webhookId": "54de8981-5978-494f-9a33-8e3b1275f270",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "of2Las3kuCReZ2FE",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.snippet }}",
+        "destinationKey": "cleanText",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "027ee5f7-4f83-4603-9aae-cb3bd4d3ce1c",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "combineMapPrompt": "You are an email summarizer. I will give you a single email. \nRead it thoroughly and return the following in markdown format:\n- **Sender**: who sent the email\n- **Subject**: the subject of the email  \n- **Summary**: a concise gist of the email content\n- **Actions**: a list of actions I need to take based on this email. \n  If no action is needed, write \"None\".",
+              "prompt": "Combine all the individual email summaries into a single \nmarkdown table with 4 columns: Sender, Subject, Summary, \nActions. Include a header row. Sort rows by priority from \nhigh to low based on the actions required. List each email \nas one row with its respective sender, subject, summary and \nactions filled in the correct columns."
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "4113e03e-2802-4318-ab61-234cfd1e4183",
+      "name": "Summarization Chain"
+    },
+    {
+      "parameters": {
+        "sendTo": "harsvardhanrajgarhia@gmail.com",
+        "subject": "=Daily Email Digest - {{ $now.format('dd/MM/yyyy') }}",
+        "message": "={{ $json.outputTable }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "f775a7a0-d7ea-4a62-b33e-7e8d90344bc8",
+      "name": "Send a message",
+      "webhookId": "e5603286-0dcb-4372-8f0e-bf54d59faf61",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "of2Las3kuCReZ2FE",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        736,
+        176
+      ],
+      "id": "f546d331-6f86-4032-9d36-0dcc55d7dfcf",
+      "name": "Google Gemini Chat Model",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "suuifOoboXLvq6os",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "{{ $json.output.text }}",
+        "destinationKey": "outputTable",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ],
+      "id": "72b917cb-5c75-42c1-a700-494d4432a9c9",
+      "name": "Markdown1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Markdown1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c3536143-409c-4604-9e2d-9950a28ff8c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bdf6adc003f2125d1bdf964da4ee385e34c8e2134c8ca77b1f7de018c59f21a1"
+  },
+  "id": "zygAJuLOfjjVr9ej",
+  "tags": []
+}
