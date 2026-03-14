@@ -1,0 +1,214 @@
+{
+  "name": "gmail-label-organizer",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "53617100-5466-4449-a04f-dcebe747f027",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "of2Las3kuCReZ2FE",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an email categorization agent. Your job is to read incoming emails and assign the most appropriate Gmail label.\n\nPRIORITY RULE — Check this FIRST before anything else:\nIf the subject contains \"Daily Email Digest\" OR the body contains \"This email was sent automatically with n8n\" → assign \"Daily Digest\" label immediately. Do not read further.\n\nAvailable categories:\n- Internships — job offers, internship opportunities, career emails\n- Hackathons — coding competitions, hackathon invites, tech events\n- Newsletters — promotional emails, updates, subscriptions\n- Finance — payments, transactions, billing\n- Personal — emails from real people, friends, colleagues\n- Other — anything that doesn't fit above\n- Daily Digest — emails with subject containing \"Daily Email Digest\"\n\nBased on the email details below, assign exactly ONE label.\n\nEmail details:\nFrom: {{ $json.From }}\nSubject: {{ $json.Subject }}\nPreview: {{ $json.snippet }}\n\nIMPORTANT INSTRUCTIONS:\n1. First call \"Get all existing Gmail labels\" to check if the label already exists\n2. If the label exists, use its ID (not name) to add it to the email\n3. If the label does not exist, call \"Create a new Gmail label\" to create it and get its ID and again call \"Get all existing Gmail labels\" to check if the new label is created.\n4. Then use the label ID when calling \"Apply a label to the incoming email\"\n5. The email ID to label is: {{ $json.id }}\n\nSTRICT RULES:\n- If the correct label does NOT exist in the \"Get many labels\" results, you MUST call \"Create a new Gmail label\" tool before calling \"Add label\"\n- NEVER call \"Add label\" with a label that doesn't exist in the \"Get many labels\" results\n- NEVER skip the \"Create a new Gmail label\" step if the label is missing\n- Apply EXACTLY ONE label\n\nIMPORTANT: Only use these custom labels: Hackathons, Internships, Newsletters, Finance, Personal, Other, Daily Digest.\nNEVER use Gmail system labels like CATEGORY_UPDATES, CATEGORY_PROMOTIONS, CATEGORY_SOCIAL, INBOX, UNREAD etc.\nOnly use labels with type \"user\" from the get labels results.\n\nSTRICT RULES:\n- Apply EXACTLY ONE label to the email — the most relevant category\n- Do NOT apply multiple labels\n- Do NOT create multiple labels\n- Call \"Apply a label to the incoming email\" tool ONLY ONCE\n- Stop immediately after applying the single label\n\nCONFLICT RESOLUTION:\n- If an email contains keywords from multiple categories, identify the PRIMARY purpose\n- The primary purpose is what the email is MAINLY about, not mentioned in passing\n- Apply ONLY the label for the primary purpose\n- NEVER apply more than one label regardless of content\n- When in doubt, choose the category that best describes why the sender sent this email",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        320,
+        0
+      ],
+      "id": "6d67f4c1-c09d-4b93-af49-c4aac62c4c31",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-3.5-turbo"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        224
+      ],
+      "id": "f5e29857-1f7c-41be-b08e-9b7dbeb7082e",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5M9ossScJMuoGN0Z",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get all existing labels in Gmail",
+        "resource": "label"
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        240
+      ],
+      "id": "88bbcae7-bbc5-4563-ace7-592761488298",
+      "name": "Get many labels in Gmail",
+      "webhookId": "ced2b207-1b35-4f2f-aff7-6360999ad4d9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "of2Las3kuCReZ2FE",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Apply exactly ONE label to the incoming email",
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Label_Names_or_IDs', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        240
+      ],
+      "id": "ec26f930-6f84-4900-90f0-4b08ba0ffccd",
+      "name": "Add label to message in Gmail",
+      "webhookId": "c96cd7f6-57f7-4026-ac11-91bf055e9973",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "of2Las3kuCReZ2FE",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create a label in Gmail",
+        "resource": "label",
+        "operation": "create",
+        "name": "={{ $fromAI(\"name\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        256
+      ],
+      "id": "9b1e8649-2d15-4a08-8b6a-646d38836bac",
+      "name": "Create a label in Gmail",
+      "webhookId": "ef941cf7-aa99-4c14-ae3e-380892ef3149",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "of2Las3kuCReZ2FE",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many labels in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add label to message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a label in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7ecab504-cf41-4f9d-b1b2-17e9ee431a10",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bdf6adc003f2125d1bdf964da4ee385e34c8e2134c8ca77b1f7de018c59f21a1"
+  },
+  "id": "UzmESGsRn3OCISee",
+  "tags": []
+}
